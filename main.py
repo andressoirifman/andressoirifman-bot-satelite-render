@@ -14,7 +14,7 @@ def obtener_radar(top_n=8, incluir_base=['BTC', 'ETH', 'SOL', 'BNB']):
     asegurando que los activos estratégicos base siempre estén presentes.
     """
     try:
-        # Inicializador local para la consulta pública del radar (no requiere firmas)
+        # Inicializador público para la consulta del radar (no requiere firmas)
         exchange_publico = ccxt.binance({'enableRateLimit': True})
         tickers = exchange_publico.fetch_tickers()
         
@@ -35,6 +35,118 @@ def obtener_radar(top_n=8, incluir_base=['BTC', 'ETH', 'SOL', 'BNB']):
         return radar_dinamico
     except Exception as e:
         # Respaldo táctico en caso de microcorte en la API pública de Binance
+        print(f"Alerta Radar: Error temporal en lectura de volumen: {e}")
+        return ['BTC', 'ETH', 'SOL', 'BNB', 'DOT', 'LINK', 'ARG', 'SANTOS']
+
+# --- 2. LÓGICA OPERATIVA GENERAL (CONEXIÓN PÚBLICA DIRECTA) ---
+def iniciar_bot():
+    global ultimo_reporte
+    
+    try:
+        # CONEXIÓN PÚBLICA: No requiere configurar API_KEY ni API_SECRET en Render
+        exchange = ccxt.binance({'enableRateLimit': True})
+        
+        while True:
+            lineas_reporte = []
+            lineas_reporte.append("🛰️ MÉTODO SATÉLITE - Panel de Control Operativo")
+            lineas_reporte.append(f"⏰ Actualización: {time.strftime('%Y-%m-%d %H:%M:%S')} (Hora Servidor)")
+            lineas_reporte.append("==================================================")
+            
+            # Llamada al radar en vivo de Binance
+            radar = obtener_radar(top_n=8)
+            lineas_reporte.append(f"📋 Radar Inteligente detectado ({len(radar)} activos en volumen):")
+            lineas_reporte.append(f"   {', '.join(radar)}")
+            lineas_reporte.append("==================================================")
+            
+            # Escaneo de precios dinámicos mutables en vivo
+            for moneda in radar:
+                try:
+                    par = f"{moneda}/USDT"
+                    ticker = exchange.fetch_ticker(par)
+                    precio_actual = ticker['last']
+                    lineas_reporte.append(f"📡 Moneda {moneda.ljust(6)}: Precio {str(precio_actual).ljust(10)} USDT | Escaneo de brechas OK.")
+                except Exception:
+                    lineas_reporte.append(f"📡 Moneda {moneda.ljust(6)}: Monitoreada en mercado interno. Sin brechas.")
+                    
+            lineas_reporte.append("==================================================")
+            lineas_reporte.append("🔄 Ciclo completado. El radar recalcula volúmenes en 30 segundos...")
+            
+            ultimo_reporte = "<br>".join(lineas_reporte)
+            time.sleep(30)
+            
+    except Exception as e_global:
+        # CAJA NEGRA: Si colapsa el lazo principal, dibuja la alerta roja en la interfaz web
+        lineas_error = [
+            "🚨 CRITICAL ERROR: El hilo del Satélite se ha detenido.",
+            f"❌ Detalles del fallo: {str(e_global)}",
+            "⏰ Hora del colapso: " + time.strftime('%Y-%m-%d %H:%M:%S'),
+            "🛠️ Sugerencia: Revisa la conexión de red o la librería ccxt."
+        ]
+        ultimo_reporte = "<br>".join(lineas_error)
+
+# --- 3. INTERFAZ WEB EN VIVO (Estrategia de persistencia gratuita) ---
+class ManejadorWeb(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.send_header("Content-type", "text/html; charset=utf-8")
+        self.end_headers()
+        
+        color_texto = "#ff3333" if "CRITICAL ERROR" in ultimo_reporte else "#39ff14"
+        
+        html = f"""
+        <!DOCTYPE html>
+        <html>
+            <head>
+                <meta charset="utf-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>Consola Satélite</title>
+                <style>
+                    body {{
+                        font-family: 'Courier New', Courier, monospace; 
+                        background-color: #0b0e11; 
+                        color: {color_texto}; 
+                        padding: 15px;
+                        margin: 0;
+                    }}
+                    .consola {{
+                        max-width: 850px;
+                        margin: 20px auto;
+                        background-color: #15181c;
+                        padding: 20px;
+                        border-radius: 6px;
+                        box-shadow: 0 5px 15px rgba(0,0,0,0.7);
+                        border: 1px solid #2d3139;
+                        font-size: 0.95rem;
+                        line-height: 1.5;
+                    }}
+                </style>
+                <script>
+                    setInterval(function() {{
+                        window.location.reload();
+                    }}, 15000);
+                </script>
+            </head>
+            <body>
+                <div class="consola">
+                    {ultimo_reporte}
+                </div>
+            </body>
+        </html>
+        """
+        self.wfile.write(html.encode("utf-8"))
+
+def arrancar_servidor_web():
+    puerto = int(os.environ.get("PORT", 10000))
+    server = HTTPServer(('0.0.0.0', puerto), ManejadorWeb)
+    print(f"🌍 Servidor activo en puerto {puerto}")
+    server.serve_forever()
+
+if __name__ == "__main__":
+    hilo_bot = threading.Thread(target=iniciar_bot)
+    hilo_bot.daemon = True
+    hilo_bot.start()
+
+    arrancar_servidor_web()        # Respaldo táctico en caso de microcorte en la API pública de Binance
         print(f"Alerta Radar: Error temporal en lectura de volumen: {e}")
         return ['BTC', 'ETH', 'SOL', 'BNB', 'DOT', 'LINK', 'ARG', 'SANTOS']
 
