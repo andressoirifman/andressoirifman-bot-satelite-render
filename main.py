@@ -41,17 +41,10 @@ def obtener_radar(top_n=8, incluir_base=['BTC', 'ETH', 'SOL', 'BNB']):
 # --- 2. LÓGICA OPERATIVA GENERAL ---
 def iniciar_bot():
     global ultimo_reporte
-    
+
     try:
-        API_KEY = os.environ.get('API_KEY')
-        API_SECRET = os.environ.get('API_SECRET')
-        
-        # Conector privado con credenciales inyectadas desde Render
-        exchange = ccxt.binance({
-            'apiKey': API_KEY,
-            'secret': API_SECRET,
-            'enableRateLimit': True
-        })
+        # CONEXIÓN PÚBLICA DIRECTA (No requiere llaves ni variables en Render)
+        exchange = ccxt.binance({'enableRateLimit': True})
         
         while True:
             lineas_reporte = []
