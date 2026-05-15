@@ -7,13 +7,33 @@ import ccxt
 # Variable global que actúa como memoria del panel visual
 ultimo_reporte = "Iniciando sistemas del Satélite... Esperando primer ciclo de mercado de Binance."
 
-# --- 1. CONFIGURACIÓN DE RADAR DINÁMICO ---
-def obtener_radar(incluir_especiales=True):
-    lista_base = ['BTC', 'ETH', 'SOL', 'BNB', 'DOT']
-    if incluir_especiales:
-        monedas_especiales = ['ARG', 'SANTOS']
-        return lista_base + monedas_especiales
-    return lista_base
+# --- 1. RADAR DINÁMICO POR VOLUMEN REAL ---
+def obtener_radar(top_n=10, incluir_base=['BTC', 'ETH']):
+    """
+    Consulta Binance en vivo y arma el radar con las monedas de mayor volumen,
+    asegurando que los activos base siempre estén presentes.
+    """
+    try:
+        exchange = ccxt.binance()
+        tickers = exchange.fetch_tickers()
+        
+        # Filtramos solo los pares que cotizan contra USDT y los ordenamos por volumen de 24h
+        pares_usdt = {k: v for k, v in tickers.items() if k.endswith('/USDT')}
+        pares_ordenados = sorted(pares_usdt.values(), key=lambda x: x.get('baseVolume', 0), reverse=True)
+        
+        # Extraemos el nombre limpio de la moneda (ej: 'BTC' de 'BTC/USDT')
+        radar_dinamico = [ticker['symbol'].split('/')[0] for ticker in pares_ordenados[:top_n]]
+        
+        # Aseguramos que tus monedas base siempre queden dentro de la lista
+        for moneda in incluir_base:
+            if moneda not in radar_dinamico:
+                radar_dinamico.append(moneda)
+                
+        return radar_dinamico
+    except Exception as e:
+        # Caja negra de emergencia: si falla la API por red, devuelve un radar de respaldo
+        print(f"Error al obtener radar en vivo: {e}")
+        return ['BTC', 'ETH', 'SOL', 'BNB', 'DOT']
 
 # --- 2. LÓGICA OPERATIVA CON DATOS REALES ---
 def iniciar_bot():
